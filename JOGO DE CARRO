@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Arrancada Noturna — Tunagem & Performance</title>
+<style>
+  :root{
+    --bg:#04040a;--road:#111217;--neon:#00e6ff;--accent:#ffdd57;--card:#0f1724;
+    --glass:rgba(255,255,255,0.04)
+  }
+  *{box-sizing:border-box;font-family:Inter,Segoe UI,Roboto,Arial}
+  body{margin:0;background:linear-gradient(180deg,#02030a 0%, #081028 100%);color:#e6eef8;min-height:100vh;display:flex;align-items:stretch;gap:18px;padding:18px}
+  .container{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:380px 1fr 320px;gap:18px;width:100%}
+  .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+  h2{margin:4px 0 10px;font-size:18px}
+  label{display:block;font-size:13px;color:#9aa6bf;margin-top:8px}
+  select,input[type="range"]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:var(--glass);color:inherit}
+  .btn{background:var(--accent);color:#07101b;border:0;padding:10px;border-radius:8px;font-weight:800;cursor:pointer;margin-top:8px}
+  .small{font-size:13px;color:#9aa6bf}
+  /* racetrack */
+  .track-wrap{position:relative;overflow:hidden;border-radius:12px;height:520px;background:
+    radial-gradient(900px 300px at 20% 10%, rgba(0,230,255,0.06), transparent 8%),
+    linear-gradient(180deg,#071027 0%, #060613 60%);display:flex;align-items:center;justify-content:center}
+  .road{width:90%;height:60%;background:linear-gradient(#181824,#0e1016);border-radius:6px;position:relative;box-shadow:0 8px 40px rgba(0,0,0,0.7)}
+  .divider{position:absolute;left:50%;top:0;bottom:0;width:4px;margin-left:-2px;background:repeating-linear-gradient(180deg,#ffffff 0 6px, rgba(255,255,255,0.06) 6px 18px);opacity:0.08}
+  /* cars (simple rectangles) */
+  .car, .car-cpu{position:absolute;width:120px;height:60px;border-radius:8px;bottom:18%;transform-origin:center;display:flex;align-items:center;justify-content:center;font-weight:800;color:#07101b}
+  .car{left:24%;background:linear-gradient(90deg,#ff6b6b,#ffb86b);z-index:5}
+  .car-cpu{left:36%;background:linear-gradient(90deg,#7be495,#00d1ff);z-index:4}
+  .hud{position:absolute;left:16px;top:12px;background:rgba(0,0,0,0.25);padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02)}
+  .metrics{display:flex;flex-direction:column;gap:6px}
+  .meter{display:flex;justify-content:space-between;font-weight:700}
+  .tuning-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .stat-row{display:flex;justify-content:space-between;padding:6px;background:rgba(255,255,255,0.02);border-radius:8px}
+  .leaderboard table{width:100%;border-collapse:collapse}
+  .leaderboard th, .leaderboard td{padding:6px;text-align:left;border-bottom:1px dashed rgba(255,255,255,0.03)}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .note{font-size:13px;color:#9aa6bf;margin-top:8px}
+  @media(max-width:1100px){.container{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+  <div class="container">
+    <!-- Left panel: seleção e tunagem -->
+    <div class="card">
+      <h2>Escolha e Tunagem</h2>
+      <label>Carro</label>
+      <select id="carSelect"></select>
+
+      <div class="tuning-list">
+        <label>Turbo (estágios)</label>
+        <select id="turbo">
+          <option value="0">Nenhum</option>
+          <option value="1">Stage 1 (+10% CV / +8% Torque, +5% top)</option>
+          <option value="2">Stage 2 (+20% CV / +16% Torque, +10% top)</option>
+          <option value="3">Stage 3 (+35% CV / +28% Torque, +18% top)</option>
+        </select>
+
+        <label>Filtro / Admissão</label>
+        <select id="filtro">
+          <option value="0">Original</option>
+          <option value="1">Esportivo (+5% CV)</option>
+          <option value="2">Cold Air (+8% CV)</option>
+        </select>
+
+        <label>Nitro (botijão)</label>
+        <select id="nitroSelect">
+          <option value="0">Sem Nitro</option>
+          <option value="1">Nitro pequeno (+30% aceleração por 2s)</option>
+          <option value="2">Nitro médio (+50% aceleração por 2s)</option>
+          <option value="3">Nitro grande (+80% aceleração por 2s)</option>
+        </select>
+
+        <label>Pneus / Tração</label>
+        <select id="pneus">
+          <option value="0">Original</option>
+          <option value="1">Street (+5% tração)</option>
+          <option value="2">Drag (+12% tração, +2% accel)</option>
+        </select>
+
+        <div class="small note">Observação: ajustes afetam CV (hp), torque, aceleração e velocidade máxima.</div>
+        <button class="btn" id="applyTune">Aplicar Tunagem</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <h3 class="small">Stats do Carro</h3>
+        <div id="stats" class="metrics">
+          <!-- preenchido por JS -->
+        </div>
+        <div class="note">Use a barra de espaço para acelerar. Pressione <strong>N</strong> para nitro (se disponível).</div>
+      </div>
+    </div>
+
+    <!-- Middle: pista e jogo -->
+    <div class="card track-wrap">
+      <div class="hud">
+        <div class="small">Status</div>
+        <div id="statusText">Aguardando...</div>
+      </div>
+
+      <div class="road" id="road">
+        <div class="divider"></div>
+        <div class="car" id="playerCar">PLAYER</div>
+        <div class="car-cpu" id="cpuCar">CPU</div>
+        <div style="position:absolute;left:6%;right:6%;bottom:2%;display:flex;justify-content:space-between">
+          <div class="small">Largada →</div>
+          <div class="small">Chegada (1000 m)</div>
+        </div>
+      </div>
+
+      <div style="position:absolute;left:24px;bottom:24px;">
+        <div class="small">Tempo: <span id="timeDisplay">00:00.000</span></div>
+        <div class="small">Nitro: <span id="nitroText">—</span></div>
+      </div>
+
+      <div style="position:absolute;right:24px;bottom:24px;display:flex;gap:8px">
+        <button class="btn" id="startBtn">Iniciar corrida</button>
+        <button class="btn" id="resetBtn">Resetar</button>
+      </div>
+    </div>
+
+    <!-- Right: desempenho e leaderboard -->
+    <div class="card">
+      <h2>Desempenho & Leaderboard</h2>
+      <div class="stat-row"><div>Nome</div><div id="carName">—</div></div>
+      <div class="stat-row"><div>CV (hp)</div><div id="statCV">—</div></div>
+      <div class="stat-row"><div>Torque (Nm)</div><div id="statTorque">—</div></div>
+      <div class="stat-row"><div>Peso (kg)</div><div id="statWeight">—</div></div>
+      <div class="stat-row"><div>0-100m (estim.)</div><div id="statAccel">—</div></div>
+      <div class="stat-row"><div>Vel. Máx (km/h)</div><div id="statTop">—</div></div>
+
+      <h3 style="margin-top:12px" class="small">Melhores tempos (Top 10)</h3>
+      <div class="leaderboard">
+        <table id="lbTable">
+          <thead><tr><th>#</th><th>Nome</th><th>Carro</th><th>Tempo</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="controls">
+        <button class="btn" id="exportLB">Exportar</button>
+        <button class="btn" id="importLB">Importar</button>
+        <button class="btn" id="clearLB">Limpar</button>
+      </div>
+      <div class="note">Ao terminar a corrida, o jogo pede para salvar seu tempo no ranking local (localStorage).</div>
+    </div>
+  </div>
+
+<script>
+/* ---------- Dados dos carros (base) ---------- */
+const cars = [
+  { id:'opala', name:'Opala', cv:150, torque:270, weight:1400 },
+  { id:'katti', name:'KATTI', cv:120, torque:200, weight:1150 },
+  { id:'golf_mk4', name:'Golf GTI MK4', cv:200, torque:280, weight:1300 },
+  { id:'golf_mk6', name:'Golf GTI MK6', cv:211, torque:280, weight:1350 },
+  { id:'golf_mk7', name:'Golf GTI MK7', cv:230, torque:320, weight:1375 },
+  { id:'golf_mk8', name:'Golf GTI MK8', cv:245, torque:370, weight:1400 },
+  { id:'gol_bola', name:'Gol Bola', cv:90, torque:120, weight:980 },
+  { id:'gol_gts', name:'Gol GTS', cv:140, torque:170, weight:1000 },
+  { id:'camaro', name:'Camaro SS', cv:450, torque:617, weight:1750 }
+];
+
+/* ---------- UI refs ---------- */
+const carSelect = document.getElementById('carSelect');
+const turboEl = document.getElementById('turbo');
+const filtroEl = document.getElementById('filtro');
+const nitroEl = document.getElementById('nitroSelect');
+const pneusEl = document.getElementById('pneus');
+const applyTuneBtn = document.getElementById('applyTune');
+const statsEl = document.getElementById('stats');
+const carNameEl = document.getElementById('carName');
+const statCV = document.getElementById('statCV');
+const statTorque = document.getElementById('statTorque');
+const statWeight = document.getElementById('statWeight');
+const statAccel = document.getElementById('statAccel');
+const statTop = document.getElementById('statTop');
+const playerCarEl = document.getElementById('playerCar');
+const cpuCarEl = document.getElementById('cpuCar');
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const timeDisplay = document.getElementById('timeDisplay');
+const nitroText = document.getElementById('nitroText');
+const statusText = document.getElementById('statusText');
+const lbTbody = document.querySelector('#lbTable tbody');
+const exportLB = document.getElementById('exportLB');
+const importLB = document.getElementById('importLB');
+const clearLB = document.getElementById('clearLB');
+
+const STORAGE_KEY = 'arrancada_noturna_lb_v1';
+const TRACK_DISTANCE_M = 1000; // 1000m sprint
+
+/* ---------- preencher select carros ---------- */
+cars.forEach(c=>{
+  const o = document.createElement('option');
+  o.value = c.id;
+  o.textContent = c.name;
+  carSelect.appendChild(o);
+});
+
+/* ---------- estado do carro atual (com tune) ---------- */
+let currentCar = null;
+function computeTunedStats(base, opts){
+  // opts: turbo (0-3), filtro (0-2), nitro (0-3), pneus (0-2)
+  let cv = base.cv;
+  let torque = base.torque;
+  // turbo
+  if(opts.turbo==1){ cv *= 1.10; torque *= 1.08; }
+  if(opts.turbo==2){ cv *= 1.20; torque *= 1.16; }
+  if(opts.turbo==3){ cv *= 1.35; torque *= 1.28; }
+  // filtro
+  if(opts.filtro==1) cv *= 1.05;
+  if(opts.filtro==2) cv *= 1.08;
+  // pneus affect traction and slight accel
+  let traction=1.0;
+  let accelBonus=0;
+  if(opts.pneus==1){ traction += 0.05; accelBonus += 0.02; }
+  if(opts.pneus==2){ traction += 0.12; accelBonus += 0.04; }
+  // round
+  cv = Math.round(cv);
+  torque = Math.round(torque);
+  // estimate top speed: proportional to cv/weight; turbo gives small top increase
+  let top = Math.round( (cv / base.weight) * 350 ); // heuristic -> km/h
+  if(opts.turbo==1) top *= 1.05;
+  if(opts.turbo==2) top *= 1.10;
+  if(opts.turbo==3) top *= 1.18;
+  top = Math.round(top);
+  // estimate 0-100m (lower is better) using torque, weight, traction
+  // simpler physics heuristic: acceleration ~ torque / weight * traction
+  let accelFactor = (torque / base.weight) * traction * (1 + accelBonus);
+  // convert to time for 1000m? we estimate time for TRACK_DISTANCE_M by simple kinematics
+  // s = 0.5 * a * t^2 => t = sqrt(2s/a) but we must map accelFactor to 'a' in m/s^2
+  // use scaling to bring values to realistic domain
+  let a = accelFactor * 0.04; // scaling constant
+  if(a < 0.2) a = 0.2; // minimum
+  const timeSec = Math.sqrt(2 * TRACK_DISTANCE_M / a); // seconds
+  // timeSec is exaggerated; scale down for playability
+  const estTime = Math.round(timeSec * 1000);
+  return { cv, torque, weight: base.weight, top, estTime, a };
+}
+
+function showStats(tuned){
+  carNameEl.textContent = currentCar.name;
+  statCV.textContent = tuned.cv + ' CV';
+  statTorque.textContent = tuned.torque + ' Nm';
+  statWeight.textContent = tuned.weight + ' kg';
+  // show estimated 1000m time in mm:ss.mmm
+  statAccel.textContent = msToTime(tuned.estTime);
+  statTop.textContent = tuned.top + ' km/h';
+
+  // show breakdown
+  statsEl.innerHTML = `
+    <div class="small">Base CV: ${currentBase.cv} | Base Torque: ${currentBase.torque}</div>
+    <div class="small">Aceleração estim. (a): ${tuned.a.toFixed(2)} m/s²</div>
+  `;
+}
+
+/* ---------- utilidades tempo ---------- */
+function msToTime(ms){
+  if(ms == null) return '--';
+  const minutes = Math.floor(ms/60000);
+  const seconds = Math.floor((ms%60000)/1000);
+  const milli = ms%1000;
+  return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}.${String(milli).padStart(3,'0')}`;
+}
+
+/* ---------- estado de jogo ---------- */
+let gameState = 'idle'; // idle, running, finished
+let startTime = null;
+let elapsedMs = 0;
+let playerPos = 0; // meters traveled
+let cpuPos = 0;
+let playerSpeed = 0; // m/s
+let cpuSpeed = 0;
+let tunedStats = null;
+let nitroAvailable = 0; // 0 = none, 1/2/3 levels
+let nitroActive = false;
+let nitroCooldown = 0;
+
+/* ---------- leaderboard ---------- */
+function loadLB(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); } catch(e){return []} }
+function saveLB(lb){ localStorage.setItem(STORAGE_KEY, JSON.stringify(lb)); }
+function addLB(name, carname, timeMs){
+  const lb = loadLB();
+  lb.push({name,car:carname,time:timeMs,date:new Date().toISOString()});
+  lb.sort((a,b)=>a.time-b.time);
+  saveLB(lb.slice(0,20));
+  renderLB();
+}
+function renderLB(){
+  const arr = loadLB();
+  lbTbody.innerHTML = '';
+  arr.slice(0,10).forEach((e,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td>${e.name}</td><td>${e.car}</td><td>${msToTime(e.time)}</td>`;
+    lbTbody.appendChild(tr);
+  });
+}
+renderLB();
+
+/* ---------- inicialização: escolher carro padrão ---------- */
+let currentBase = cars[0];
+carSelect.value = currentBase.id;
+carNameEl.textContent = currentBase.name;
+let currentTuneOpts = { turbo:0,filtro:0,nitro:0,pneus:0 };
+
+function updateCurrentBaseFromSelect(){
+  const id = carSelect.value;
+  currentBase = cars.find(c=>c.id===id);
+  currentCar = { ...currentBase };
+  tunedStats = computeTunedStats(currentBase, currentTuneOpts);
+  showStats(tunedStats);
+  nitroAvailable = Number(nitroEl.value);
+  nitroText.textContent = nitroAvailable>0?(`Nível ${nitroAvailable}`):'—';
+  playerCarEl.textContent = currentBase.name.split(' ')[0].toUpperCase();
+}
+updateCurrentBaseFromSelect();
+
+/* eventos UI */
+carSelect.addEventListener('change', ()=>{ currentTuneOpts = { turbo:Number(turboEl.value), filtro:Number(filtroEl.value), nitro:Number(nitroEl.value), pneus:Number(pneusEl.value)}; updateCurrentBaseFromSelect(); });
+applyTuneBtn.addEventListener('click', ()=>{
+  currentTuneOpts = { turbo:Number(turboEl.value), filtro:Number(filtroEl.value), nitro:Number(nitroEl.value), pneus:Number(pneusEl.value)};
+  tunedStats = computeTunedStats(currentBase, currentTuneOpts);
+  showStats(tunedStats);
+  nitroAvailable = Number(nitroEl.value);
+  nitroText.textContent = nitroAvailable>0?(`Nível ${nitroAvailable}`):'—';
+  statusText.textContent = 'Tunagem aplicada';
+});
+
+/* ---------- corrida: física simples ---------- */
+const FPS = 60;
+let loopId = null;
+
+function startRace(){
+  if(gameState === 'running') return;
+  // reset
+  playerPos = 0; cpuPos = 0;
+  playerSpeed = 0; cpuSpeed = 0;
+  elapsedMs = 0; startTime = performance.now();
+  gameState = 'running';
+  nitroActive = false; nitroCooldown = 0;
+  statusText.textContent = 'Corrida em andamento';
+  // cpu tuned: small advantage based on random + cv
+  tunedStats = computeTunedStats(currentBase, currentTuneOpts);
+  // cpu base chosen relative to player's base to create challenge
+  const cpuBase = cars[Math.floor(Math.random()*cars.length)];
+  const cpuTuned = computeTunedStats(cpuBase, { turbo:Math.random()*3|0, filtro:Math.random()*2|0, nitro:0, pneus:Math.random()*2|0});
+  cpuSpeed = 0;
+  // set positions of elements
+  playerCarEl.style.left = '20%';
+  cpuCarEl.style.left = '32%';
+  // animate loop
+  let last = performance.now();
+  function loop(now){
+    const dt = (now - last)/1000; last = now;
+    // update elapsed
+    elapsedMs = now - startTime;
+    // player acceleration: a = tunedStats.a (m/s^2) scaled by throttle input
+    const throttle = inputState.throttle?1:0;
+    const baseA = tunedStats.a;
+    let aPlayer = baseA * (0.9 + 0.2*throttle); // small variation
+    // nitro effect
+    if(nitroActive){
+      if(nitroAvailable==1) aPlayer *= 1.30;
+      if(nitroAvailable==2) aPlayer *= 1.50;
+      if(nitroAvailable==3) aPlayer *= 1.80;
+    }
+    // simple drag and diminishing returns
+    playerSpeed += aPlayer * dt;
+    // cap speed by top in m/s
+    const topMS = tunedStats.top / 3.6;
+    if(playerSpeed > topMS) playerSpeed = topMS;
+    // cpu behavior: simple model using cpuTuned.a and some randomness
+    const cpuA = cpuTuned.a * (0.85 + Math.random()*0.3);
+    cpuSpeed += cpuA * dt;
+    const cpuTopMS = cpuTuned.top / 3.6;
+    if(cpuSpeed > cpuTopMS) cpuSpeed = cpuTopMS;
+    // update positions
+    playerPos += playerSpeed * dt;
+    cpuPos += cpuSpeed * dt;
+    // update UI positions (map 0..TRACK_DISTANCE_M to left..right)
+    const roadEl = document.getElementById('road');
+    const roadRect = roadEl.getBoundingClientRect();
+    const leftPx = roadRect.left + roadRect.width*0.06;
+    const rightPx = roadRect.left + roadRect.width*0.94;
+    const pxRange = roadRect.width * 0.88;
+    const playerX = clamp(leftPx + (playerPos / TRACK_DISTANCE_M) * pxRange, leftPx, rightPx);
+    const cpuX = clamp(leftPx + (cpuPos / TRACK_DISTANCE_M) * pxRange, leftPx, rightPx);
+    // set style left in percentage relative to road container
+    const relPlayer = ((playerX - roadRect.left) / roadRect.width)*100;
+    const relCpu = ((cpuX - roadRect.left) / roadRect.width)*100;
+    playerCarEl.style.left = relPlayer + '%';
+    cpuCarEl.style.left = relCpu + '%';
+    // update time display
+    timeDisplay.textContent = msToTime(Math.round(elapsedMs));
+    // nitro duration handling: nitroActive false after 2s
+    if(nitroActive){
+      if(performance.now() - nitroStartTime > 2000) { nitroActive = false; nitroCooldown = 3000; nitroText.textContent = 'Recarregando...'; nitroUsedThisRun = true; }
+    } else {
+      if(nitroCooldown>0) nitroCooldown -= (now-last);
+      if(nitroCooldown<=0) { nitroCooldown = 0; if(!nitroUsedThisRun) nitroText.textContent = nitroAvailable>0?`Nível ${nitroAvailable}`:'—'; else nitroText.textContent = 'Usado'; }
+    }
+    // check finish
+    if(playerPos >= TRACK_DISTANCE_M || cpuPos >= TRACK_DISTANCE_M){
+      finishRace();
+      return;
+    }
+    loopId = requestAnimationFrame(loop);
+  }
+  loopId = requestAnimationFrame(loop);
+}
+
+function finishRace(){
+  if(loopId) cancelAnimationFrame(loopId);
+  gameState = 'finished';
+  const finalTime = Math.round(elapsedMs);
+  statusText.textContent = 'Corrida finalizada';
+  // show prompt to save
+  setTimeout(()=>{
+    const save = confirm('Corrida finalizada em ' + msToTime(finalTime) + '. Salvar no ranking?');
+    if(save){
+      const nome = prompt('Digite seu nome para o ranking:') || 'Anon';
+      addLB(nome, currentBase.name, finalTime);
+      alert('Salvo!');
+    }
+  }, 200);
+}
+
+/* ---------- controles de input ---------- */
+const inputState = { throttle:false };
+document.addEventListener('keydown', (e)=>{
+  if(e.code === 'Space'){ inputState.throttle = true; e.preventDefault(); }
+  if(e.key.toLowerCase() === 'n'){ tryActivateNitro(); }
+});
+document.addEventListener('keyup', (e)=>{ if(e.code === 'Space'){ inputState.throttle = false; } });
+
+startBtn.addEventListener('click', ()=>{ if(gameState==='running') return; startRace(); });
+resetBtn.addEventListener('click', ()=>{
+  if(loopId) cancelAnimationFrame(loopId);
+  gameState = 'idle'; startTime = null; elapsedMs=0; playerPos=0; cpuPos=0; playerSpeed=0; cpuSpeed=0;
+  timeDisplay.textContent = '00:00.000'; statusText.textContent = 'Aguardando...';
+  playerCarEl.style.left = '24%'; cpuCarEl.style.left = '36%';
+  nitroActive=false; nitroText.textContent = nitroAvailable>0?`Nível ${nitroAvailable}`:'—';
+});
+
+/* nitro handling */
+let nitroStartTime = 0;
+let nitroUsedThisRun = false;
+function tryActivateNitro(){
+  if(gameState !== 'running') return;
+  if(nitroAvailable <= 0) return;
+  if(nitroActive) return;
+  if(nitroUsedThisRun) return; // only one nitro per run for simplicity
+  nitroActive = true; nitroStartTime = performance.now(); nitroText.textContent = 'Ativo!';
+}
+
+/* ---------- helpers ---------- */
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+/* ---------- leaderboard controls ---------- */
+exportLB.addEventListener('click', ()=>{
+  const data = JSON.stringify(loadLB(), null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'leaderboard_arrancada.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+importLB.addEventListener('click', ()=>{
+  const raw = prompt('Cole o JSON do ranking para importar (substituirá):');
+  if(!raw) return;
+  try{ const parsed = JSON.parse(raw); if(!Array.isArray(parsed)) throw new Error('Formato inválido'); saveLB(parsed); renderLB(); alert('Importado!'); }
+  catch(e){ alert('Falha ao importar: ' + e.message); }
+});
+clearLB.addEventListener('click', ()=>{
+  if(!confirm('Limpar ranking?')) return;
+  saveLB([]); renderLB();
+});
+
+/* ---------- persistência de seleção básica ---------- */
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='hidden' && gameState==='running'){ /* pause? optionally */ }
+});
+
+/* ---------- on load ---------- */
+renderLB();
+
+/* ---------- set currentBase var used earlier ---------- */
+currentBase = cars[0];
+currentTuneOpts = { turbo:0,filtro:0,nitro:0,pneus:0 };
+carSelect.addEventListener('change', ()=>{ updateCurrentBaseFromSelect(); });
+turboEl.addEventListener('change', ()=>{ /* nothing */ });
+filtroEl.addEventListener('change', ()=>{ /* nothing */ });
+nitroEl.addEventListener('change', ()=>{ /* nothing */ });
+pneusEl.addEventListener('change', ()=>{ /* nothing */ });
+
+/* initialize */
+updateCurrentBaseFromSelect();
+
+</script>
+</body>
+</html>
