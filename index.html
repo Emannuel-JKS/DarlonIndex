@@ -74,6 +74,19 @@ aside h3{margin:14px 0 6px;font-size:15px;color:var(--mute);font-weight:600}
 .wcr .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wcr .nm small{display:block;color:var(--mute);font-size:12px}
 .btn.sm{padding:4px 8px;font-size:14px}
+[hidden]{display:none!important}
+.roles{display:flex;gap:8px}
+.cgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+@media (min-width:980px){.cgrid{grid-template-columns:340px minmax(0,1fr)}}
+.crow{display:block;width:100%;text-align:left;color:var(--ink);background:#0a1730;border:2px solid var(--edge2);border-radius:5px;padding:7px 10px;margin-bottom:5px;cursor:pointer}
+.crow:hover{border-color:var(--edge)}.crow.sel{border-color:var(--gold);background:#2a2108}
+.crow small{display:block;color:var(--mute);font-size:13px}
+.crow:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.srow{display:grid;grid-template-columns:42px 1fr 56px 88px 34px 34px;gap:6px;margin-bottom:5px;align-items:center}
+.srow .avbtn .av{--s:34px}
+.note{margin:8px 0;padding:8px 10px;background:#0a1730;border:2px solid var(--edge2);border-radius:5px;font-size:14px}
+code.cd{font-family:ui-monospace,monospace;letter-spacing:.08em;color:var(--gold);font-size:15px}
+.cgrid h2{margin:0 0 6px;font-size:20px;color:var(--gold)}.cgrid h3{margin:14px 0 6px;font-size:15px;color:var(--mute);font-weight:600}
 .chrow{display:grid;grid-template-columns:30px 1fr 24px;gap:8px;align-items:center;padding:5px 8px;margin-bottom:4px;background:#0a1730;border:2px solid var(--edge2);border-radius:5px;cursor:pointer}
 .chrow.aus{opacity:.6;border-color:var(--bad)}
 .chrow input{width:22px;height:22px;accent-color:#4cd37b}
@@ -140,12 +153,17 @@ dialog::backdrop{background:rgba(2,6,16,.75)}
       </svg>
       <div><h1>EduQuest</h1><small>Aprender também é uma aventura!</small></div>
     </div>
+    <div class="roles" role="group" aria-label="Perfil de acesso">
+      <button class="btn" id="roleProf" aria-pressed="true">🎓 Professor</button>
+      <button class="btn" id="roleCoord" aria-pressed="false">🗂 Coordenação</button>
+    </div>
     <div class="hud" id="hud"></div>
   </header>
 
-  <div class="toolbar px" role="toolbar" aria-label="Ferramentas do professor">
+  <div class="toolbar px" id="teacherBar" role="toolbar" aria-label="Ferramentas do professor">
     <select id="turmaSel" aria-label="Turma"></select>
     <button class="btn" id="bTurma">⚙ Turma</button>
+    <button class="btn" id="bImpT">📥 Importar turmas</button>
     <button class="btn" id="bAlunos">👥 Alunos</button>
     <button class="btn" id="bChamada">📋 Chamada</button>
     <button class="btn" id="bProf">🎓 Professor</button>
@@ -160,7 +178,22 @@ dialog::backdrop{background:rgba(2,6,16,.75)}
     <button class="btn" id="bSom" aria-pressed="true">🔊 Som</button>
   </div>
 
-  <main class="stage">
+  <section id="coordView" hidden>
+    <div class="toolbar px" role="toolbar" aria-label="Ferramentas da coordenação">
+      <button class="btn gold" id="cNew">+ Nova turma</button>
+      <select id="cExpProf" aria-label="Professor do pacote"></select>
+      <label class="check" style="margin:0 4px"><input type="checkbox" id="cPhotos" checked> Incluir fotos</label>
+      <button class="btn" id="cExport">📤 Exportar pacote de turmas</button>
+      <button class="btn" id="cSend">▶ Enviar ao perfil do professor deste navegador</button>
+      <button class="btn" id="cCodes">🔑 Códigos dos alunos (Excel)</button>
+      <button class="btn" id="cOpen">📂 Abrir pacote</button>
+    </div>
+    <div class="cgrid">
+      <section class="px" style="padding:14px"><div id="cList"></div></section>
+      <section class="px" style="padding:14px"><div id="cEdit"></div></section>
+    </div>
+  </section>
+  <main class="stage" id="teacherStage">
     <section>
       <div class="room px">
         <canvas id="c" width="1280" height="800" tabindex="-1" aria-label="Sala de aula. Clique em um aluno para pontuar. Para navegar pelo teclado use a lista do ranking ao lado."></canvas>
@@ -246,6 +279,23 @@ dialog::backdrop{background:rgba(2,6,16,.75)}
   </div>
   <div class="df"><button class="btn" id="temaClear">Limpar</button><button class="btn gold" id="temaSave">Salvar</button></div>
 </dialog>
+
+<!-- Importar turmas (professor) -->
+<dialog id="dImpT">
+  <div class="dh"><h2>Importar turmas da coordenação</h2><button class="btn" data-close>Fechar</button></div>
+  <div class="db">
+    <label class="f" for="impFile">Arquivo do pacote de turmas (.json)</label>
+    <input id="impFile" type="file" accept=".json,application/json">
+    <label class="f" for="impText">Ou cole o conteúdo do pacote aqui</label>
+    <textarea id="impText" style="min-height:90px"></textarea>
+    <label class="check"><input type="checkbox" id="impRemove"> Remover alunos que não estão mais no pacote</label>
+    <p class="muted small">Pontos, presença e visual dos alunos que já existem são mantidos.</p>
+  </div>
+  <div class="df"><button class="btn gold" id="impGo">Importar</button></div>
+</dialog>
+<input type="file" id="regFile" hidden>
+<input type="file" id="regPhoto1" accept="image/*" hidden>
+<input type="file" id="regPhotos" accept="image/*" multiple hidden>
 
 <!-- Chamada -->
 <dialog id="dChamada">
@@ -337,7 +387,8 @@ let state;
 try{const raw=localStorage.getItem(KEY);state=raw?JSON.parse(raw):null}catch(e){state=null}
 if(!state||!Array.isArray(state.classes)||!state.classes.length||!Array.isArray(state.attrs)) state=seed();
 let saveT=null;
-function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}},250)}
+let quotaWarned=false;
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(state));quotaWarned=false}catch(e){if(!quotaWarned){quotaWarned=true;try{toast('Armazenamento do navegador cheio: exporte um backup e reduza as fotos')}catch(_){}}}},250)}
 const cls=()=>state.classes.find(c=>c.id===state.activeId)||state.classes[0];
 const attr=id=>state.attrs.find(a=>a.id===id);
 const ui={sel:null,hover:-1,mapMode:false,moveId:null,applyTeam:false,q:''};
@@ -357,6 +408,8 @@ const studentAt=(seat)=>cls().students.find(s=>s.seat===seat);
 state.classes.forEach(normalizeSeats);
 if(!state.teacher)state.teacher={...DEFAULT_TEACHER};
 fixTeacher(state.teacher);
+if(!state.registry||!Array.isArray(state.registry.turmas))state.registry={escola:'',turmas:[]};
+if(!state.role)state.role='professor';
 
 /* ========= pontuação ========= */
 function applyPts(s,a,dir){
@@ -1232,9 +1285,233 @@ $('#bImport').onclick=()=>{
     const d=JSON.parse($('#bIn').value);
     if(!d||!Array.isArray(d.classes)||!d.classes.length||!Array.isArray(d.attrs))throw 0;
     d.classes.forEach(c=>{c.students=Array.isArray(c.students)?c.students:[];c.students.forEach(s=>{s.counts=s.counts||{};s.today=s.today||{};s.log=s.log||[];s.xp=s.xp||0});normalizeSeats(c)});
-    state=d;if(!state.teacher)state.teacher={...DEFAULT_TEACHER};fixTeacher(state.teacher);syncBoard();state.activeId=state.classes.some(c=>c.id===state.activeId)?state.activeId:state.classes[0].id;
+    state=d;if(!state.teacher)state.teacher={...DEFAULT_TEACHER};fixTeacher(state.teacher);if(!state.registry||!Array.isArray(state.registry.turmas))state.registry={escola:'',turmas:[]};if(!state.role)state.role='professor';syncBoard();state.activeId=state.classes.some(c=>c.id===state.activeId)?state.activeId:state.classes[0].id;
     ui.sel=null;save();renderAll();$('#dBackup').close();toast('Backup importado');
   }catch(e){toast('Backup inválido. Cole o texto completo.')}
+};
+
+/* ========= perfil da coordenação ========= */
+const regUI={sel:null,del:false,note:''};
+const SERIES=['6º ano','7º ano','8º ano','9º ano','Outra'];
+const TURNOS=['Manhã','Tarde','Integral'];
+const CODE_AL='23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+function newCode(){
+  const used=new Set();state.registry.turmas.forEach(t=>t.students.forEach(s=>used.add(s.code)));
+  let c;do{c='';for(let i=0;i<6;i++)c+=CODE_AL[Math.floor(Math.random()*CODE_AL.length)]}while(used.has(c));return c;
+}
+const regTurma=cid=>state.registry.turmas.find(t=>t.cid===cid);
+function regAddStudents(t,list){
+  let n=0;const have=new Set(t.students.map(s=>s.name.toLowerCase()));
+  list.forEach(p=>{const nm=String(p.name||'').trim().slice(0,40);if(!nm||have.has(nm.toLowerCase()))return;have.add(nm.toLowerCase());t.students.push({id:uid(),name:nm,team:p.team||0,code:newCode()});n++});
+  return n;
+}
+function parseNamesText(txt){
+  return txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{const parts=l.split(/[;\t]|,(?=\s*\d+\s*$)/);return {name:parts[0].replace(/^\d+\s*[.)\-–]\s*/,'').trim(),team:parseInt(parts[1])||0}});
+}
+async function readNamesFile(file){
+  const name=file.name.toLowerCase();let rows=[];
+  if(typeof XLSX!=='undefined'){
+    const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+    rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  }else if(/\.(csv|txt)$/.test(name)){
+    rows=(await file.text()).split(/\r?\n/).map(l=>l.split(/[;,\t]/));
+  }else throw new Error('xlsx');
+  let start=0,ni=0,ti=-1;
+  const hl=(rows[0]||[]).map(x=>String(x).toLowerCase());
+  const ix=hl.findIndex(x=>/nome|aluno|estudante/.test(x));
+  if(ix>=0){ni=ix;start=1;ti=hl.findIndex(x=>/equipe|grupo/.test(x))}
+  return rows.slice(start).map(r=>({name:String(r[ni]||'').trim(),team:ti>=0?(parseInt(r[ti])||0):0})).filter(x=>x.name);
+}
+function renderReg(){
+  const R=state.registry;
+  const byUnit={};R.turmas.forEach(t=>{const u=t.unit||'Sem unidade';(byUnit[u]=byUnit[u]||[]).push(t)});
+  const units=Object.keys(byUnit).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const total=R.turmas.reduce((n,t)=>n+t.students.length,0);
+  $('#cList').innerHTML=`<h2>Turmas cadastradas</h2>
+    <label class="f" for="cEscola">Escola</label><input id="cEscola" value="${esc(R.escola||'')}" placeholder="Nome da escola" maxlength="60">
+    <p class="muted small" style="margin:8px 0 0">${R.turmas.length} turmas · ${total} alunos</p>`+
+    (units.map(u=>`<h3>${esc(u)}</h3>`+byUnit[u].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR',{numeric:true})).map(t=>`<button class="crow ${t.cid===regUI.sel?'sel':''}" data-act="csel" data-cid="${t.cid}"><b>${esc(t.name)}</b><small>${esc(t.serie||'')}${t.turno?' · '+esc(t.turno):''} · ${esc(t.prof||'sem professor')} · ${t.students.length} alunos</small></button>`).join('')).join('')||'<p class="muted" style="margin-top:12px">Nenhuma turma ainda. Clique em "+ Nova turma".</p>');
+  const profs=[...new Set(R.turmas.map(t=>t.prof).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const cur=$('#cExpProf').value;
+  $('#cExpProf').innerHTML='<option value="">Todos os professores</option>'+profs.map(p=>`<option ${p===cur?'selected':''}>${esc(p)}</option>`).join('');
+  const t=regTurma(regUI.sel);
+  if(!t){$('#cEdit').innerHTML='<h2>Turma</h2><p class="muted">Selecione uma turma da lista ou crie uma nova.</p>';return}
+  const sel=(arr,v)=>arr.map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('');
+  $('#cEdit').innerHTML=`<h2>Editar turma</h2>
+    <label class="f" for="fName">Nome da turma</label><input id="fName" data-f="name" value="${esc(t.name)}" maxlength="40">
+    <div class="g2"><div><label class="f" for="fUnit">Unidade</label><input id="fUnit" data-f="unit" list="unidades" value="${esc(t.unit==='Sem unidade'?'':(t.unit||''))}" maxlength="30"></div>
+    <div><label class="f" for="fSerie">Série / ano</label><select id="fSerie" data-f="serie"><option value=""></option>${sel(SERIES,t.serie)}</select></div></div>
+    <div class="g2"><div><label class="f" for="fTurno">Turno</label><select id="fTurno" data-f="turno"><option value=""></option>${sel(TURNOS,t.turno)}</select></div>
+    <div><label class="f" for="fProf">Professor responsável</label><input id="fProf" data-f="prof" list="profsList" value="${esc(t.prof||'')}" maxlength="40"></div></div>
+    <datalist id="profsList">${profs.map(p=>`<option value="${esc(p)}">`).join('')}</datalist>
+    <label class="f" for="fDisc">Disciplina</label><input id="fDisc" data-f="disc" value="${esc(t.disc||'')}" maxlength="40">
+    <h3>Alunos (${t.students.length})</h3>
+    <label class="f" for="addTxt">Adicionar: um nome por linha (equipe é opcional: Ana; 2)</label>
+    <textarea id="addTxt" style="min-height:80px"></textarea>
+    <div class="row" style="margin-top:6px"><button class="btn gold" data-act="sadd">Adicionar alunos</button>
+      <button class="btn" data-act="sfile">📂 Importar planilha (.xlsx ou .csv)</button>
+      <button class="btn" data-act="sphotos">📷 Importar fotos (várias)</button></div>
+    <p class="muted small" style="margin:6px 0 0">Fotos em lote: dê a cada arquivo o nome do aluno (ex.: Ana Beatriz.jpg) ou o código dele. Para uma foto só, clique no rosto do aluno na lista.</p>
+    ${regUI.note?`<div class="note" role="status">${esc(regUI.note)}</div>`:''}
+    <div style="margin-top:12px">${t.students.map(s=>`<div class="srow"><button class="avbtn" data-act="sphoto" data-sid="${s.id}" title="Enviar foto de ${esc(s.name)}" aria-label="Enviar foto de ${esc(s.name)}">${avatar(s,34)}</button><input data-sf="name" data-sid="${s.id}" value="${esc(s.name)}" aria-label="Nome do aluno" maxlength="40"><input data-sf="team" data-sid="${s.id}" type="number" min="0" max="20" value="${s.team||0}" aria-label="Equipe"><code class="cd" title="Código do aluno">${s.code}</code>${s.photo?`<button class="btn sm" data-act="sphotorm" data-sid="${s.id}" title="Remover foto" aria-label="Remover foto de ${esc(s.name)}">🗑</button>`:'<span></span>'}<button class="btn sm danger" data-act="sdel" data-sid="${s.id}" aria-label="Remover ${esc(s.name)}">✕</button></div>`).join('')||'<p class="muted small">Nenhum aluno ainda.</p>'}</div>
+    <div class="row" style="margin-top:14px"><button class="btn danger" data-act="tdel">${regUI.del?'Clique de novo para excluir':'Excluir turma'}</button></div>`;
+}
+function setRole(r){
+  state.role=r;save();
+  const coord=r==='coordenador';
+  $('#teacherBar').hidden=coord;$('#teacherStage').hidden=coord;$('#hud').hidden=coord;$('#coordView').hidden=!coord;
+  $('#roleProf').setAttribute('aria-pressed',String(!coord));$('#roleCoord').setAttribute('aria-pressed',String(coord));
+  if(coord){regUI.sel=regUI.sel&&regTurma(regUI.sel)?regUI.sel:(state.registry.turmas[0]||{}).cid||null;renderReg()}else renderAll();
+}
+$('#roleProf').onclick=()=>setRole('professor');
+$('#roleCoord').onclick=()=>setRole('coordenador');
+$('#cNew').onclick=()=>{
+  const t={cid:uid(),name:'Nova turma',unit:'',serie:'',turno:'',prof:'',disc:'',students:[]};
+  state.registry.turmas.push(t);regUI.sel=t.cid;regUI.del=false;save();renderReg();
+  setTimeout(()=>{const f=$('#fName');if(f){f.focus();f.select()}},50);
+};
+$('#cList').addEventListener('change',e=>{if(e.target.id==='cEscola'){state.registry.escola=e.target.value.trim();save()}});
+$('#cList').addEventListener('click',e=>{const b=e.target.closest('[data-act="csel"]');if(b){regUI.sel=b.dataset.cid;regUI.del=false;renderReg()}});
+$('#cEdit').addEventListener('change',e=>{
+  const t=regTurma(regUI.sel);if(!t)return;
+  const f=e.target.dataset.f,sf=e.target.dataset.sf;
+  if(f){t[f]=e.target.value.trim();if(f==='unit'&&!t.unit)t.unit='';if(f==='name'&&!t.name)t.name='Turma';save();renderReg()}
+  else if(sf){const s=t.students.find(x=>x.id===e.target.dataset.sid);if(!s)return;
+    if(sf==='name')s.name=e.target.value.trim().slice(0,40)||s.name;else s.team=Math.max(0,parseInt(e.target.value)||0);save();renderReg()}
+});
+$('#cEdit').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const t=regTurma(regUI.sel);if(!t)return;
+  const a=b.dataset.act;
+  if(a==='sadd'){const n=regAddStudents(t,parseNamesText($('#addTxt').value));save();renderReg();toast(n?n+' aluno(s) adicionado(s)':'Nenhum nome novo para adicionar')}
+  else if(a==='sdel'){t.students=t.students.filter(s=>s.id!==b.dataset.sid);save();renderReg()}
+  else if(a==='sphoto'){const f=$('#regPhoto1');f.dataset.sid=b.dataset.sid;f.value='';f.click()}
+  else if(a==='sphotorm'){const s=t.students.find(x=>x.id===b.dataset.sid);if(s){delete s.photo;save();renderReg()}}
+  else if(a==='sphotos'){const f=$('#regPhotos');f.value='';f.click()}
+  else if(a==='sfile'){const f=$('#regFile');f.accept='.xlsx,.xls,.csv,.txt';f.dataset.mode='names';f.value='';f.click()}
+  else if(a==='tdel'){
+    if(!regUI.del){regUI.del=true;renderReg();return}
+    state.registry.turmas=state.registry.turmas.filter(x=>x.cid!==t.cid);regUI.sel=(state.registry.turmas[0]||{}).cid||null;regUI.del=false;save();renderReg();toast('Turma excluída do cadastro');
+  }
+});
+// fotos dos alunos
+function photoFromFile(file,S,q){
+  S=S||128;q=q||.8;
+  return new Promise((res,rej)=>{
+    const fr=new FileReader();
+    fr.onerror=()=>rej(new Error('leitura'));
+    fr.onload=()=>{const img=new Image();
+      img.onerror=()=>rej(new Error('imagem'));
+      img.onload=()=>{const c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');
+        const m=Math.min(img.width,img.height),sx=(img.width-m)/2,sy=(img.height-m)*0.25;
+        g.drawImage(img,sx,sy,m,m,0,0,S,S);res(c.toDataURL('image/jpeg',q))};
+      img.src=fr.result};
+    fr.readAsDataURL(file);
+  });
+}
+const normName=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\.[a-z0-9]{2,5}$/,'').replace(/[_\-.]+/g,' ').replace(/\s+/g,' ').trim();
+function matchStudentByFile(t,fname){
+  const n=normName(fname);
+  let s=t.students.find(x=>normName(x.name)===n)||t.students.find(x=>x.code.toLowerCase()===n);
+  if(!s){const c=t.students.filter(x=>{const m=normName(x.name);return n&&m&&(m.startsWith(n)||n.startsWith(m))});if(c.length===1)s=c[0]}
+  return s;
+}
+$('#regPhoto1').addEventListener('change',async()=>{
+  const inp=$('#regPhoto1'),f=inp.files&&inp.files[0],t=regTurma(regUI.sel);if(!f||!t)return;
+  const s=t.students.find(x=>x.id===inp.dataset.sid);if(!s)return;
+  try{s.photo=await photoFromFile(f);regUI.note='';save();renderReg();toast('Foto de '+s.name.split(' ')[0]+' salva')}catch(e){toast('Não consegui abrir essa imagem')}
+});
+$('#regPhotos').addEventListener('change',async()=>{
+  const files=[...($('#regPhotos').files||[])],t=regTurma(regUI.sel);if(!files.length||!t)return;
+  let ok=0;const miss=[];
+  for(const f of files){
+    const s=matchStudentByFile(t,f.name);
+    if(!s){miss.push(f.name);continue}
+    try{s.photo=await photoFromFile(f);ok++}catch(e){miss.push(f.name)}
+  }
+  regUI.note=`${ok} foto(s) associada(s).`+(miss.length?` Sem correspondência: ${miss.slice(0,8).join(', ')}${miss.length>8?' e mais '+(miss.length-8):''}.`:'');
+  save();renderReg();toast(ok+' foto(s) importada(s)');
+});
+// pacote de turmas
+function buildPackage(prof,withPhotos){
+  const R=state.registry;
+  return {eduquest:'turmas',v:1,escola:R.escola||'',gerado:new Date().toISOString(),
+    turmas:R.turmas.filter(t=>!prof||t.prof===prof).map(t=>({cid:t.cid,name:t.name,unit:t.unit||'',serie:t.serie||'',turno:t.turno||'',prof:t.prof||'',disc:t.disc||'',students:t.students.map(s=>{const o={id:s.id,name:s.name,team:s.team||0,code:s.code};if(withPhotos&&s.photo)o.photo=s.photo;return o})}))};
+}
+function importPackage(pkg,opts){
+  if(!pkg||pkg.eduquest!=='turmas'||!Array.isArray(pkg.turmas))throw new Error('formato');
+  let nt=0,ut=0,ns=0,rs=0,last=null;
+  pkg.turmas.forEach(t=>{
+    let c=state.classes.find(x=>x.cid&&x.cid===t.cid);
+    if(!c){c={id:uid(),cid:t.cid,name:t.name,unit:t.unit||'Sem unidade',cols:5,rows:5,motto:'Juntos construímos um futuro melhor!',students:[]};state.classes.push(c);nt++}else ut++;
+    c.name=t.name;if(t.unit)c.unit=t.unit;c.serie=t.serie||'';c.prof=t.prof||'';c.managed=true;
+    const seen=new Set();
+    (t.students||[]).forEach(p=>{
+      seen.add(p.id);
+      let s=c.students.find(x=>x.sid===p.id);
+      if(!s){s=newStudent(p.name,p.team||0,-1);s.sid=p.id;c.students.push(s);ns++}
+      s.name=p.name;if(p.team)s.team=p.team;s.code=p.code;if(p.photo)s.photo=p.photo;
+    });
+    if(opts&&opts.removeMissing){const b=c.students.length;c.students=c.students.filter(s=>!s.sid||seen.has(s.sid));rs+=b-c.students.length}
+    normalizeSeats(c);last=c;
+  });
+  if(last&&pkg.turmas.length===1)state.activeId=last.id;
+  syncBoard();save();renderAll();
+  return {nt,ut,ns,rs};
+}
+const sumTxt=r=>`${r.nt} turma(s) nova(s), ${r.ut} atualizada(s), ${r.ns} aluno(s) novo(s)${r.rs?', '+r.rs+' removido(s)':''}`;
+$('#cExport').onclick=async()=>{
+  const prof=$('#cExpProf').value,pkg=buildPackage(prof,$('#cPhotos').checked);
+  if(!pkg.turmas.length){toast('Cadastre ao menos uma turma antes de exportar');return}
+  const slug=(prof||'todos').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase();
+  await saveFile(`turmas-${slug}-${todayStr()}.json`,new Blob([JSON.stringify(pkg,null,1)],{type:'application/json'}));
+};
+$('#cSend').onclick=()=>{
+  const pkg=buildPackage($('#cExpProf').value,$('#cPhotos').checked);
+  if(!pkg.turmas.length){toast('Cadastre ao menos uma turma antes');return}
+  try{const r=importPackage(pkg,{});toast('Enviado ao perfil do professor: '+sumTxt(r))}catch(e){toast('Não foi possível enviar')}
+};
+$('#cOpen').onclick=()=>{const f=$('#regFile');f.accept='.json,application/json';f.dataset.mode='pkg';f.value='';f.click()};
+$('#regFile').addEventListener('change',async()=>{
+  const f=$('#regFile').files&&$('#regFile').files[0];if(!f)return;
+  const mode=$('#regFile').dataset.mode;
+  try{
+    if(mode==='names'){
+      const t=regTurma(regUI.sel);if(!t)return;
+      const list=await readNamesFile(f);const n=regAddStudents(t,list);save();renderReg();toast(n+' aluno(s) importado(s) da planilha');
+    }else{
+      const pkg=JSON.parse(await f.text());
+      if(!pkg||pkg.eduquest!=='turmas')throw new Error('formato');
+      let n=0;pkg.turmas.forEach(t=>{const cur=regTurma(t.cid);if(cur){Object.assign(cur,{name:t.name,unit:t.unit,serie:t.serie,turno:t.turno,prof:t.prof,disc:t.disc});(t.students||[]).forEach(p=>{const s=cur.students.find(x=>x.id===p.id);if(s){s.name=p.name;s.team=p.team||0;if(p.photo)s.photo=p.photo}else cur.students.push({id:p.id,name:p.name,team:p.team||0,code:p.code,photo:p.photo})})}else{state.registry.turmas.push({cid:t.cid,name:t.name,unit:t.unit||'',serie:t.serie||'',turno:t.turno||'',prof:t.prof||'',disc:t.disc||'',students:(t.students||[]).map(p=>({id:p.id,name:p.name,team:p.team||0,code:p.code,photo:p.photo}))})}n++});
+      if(pkg.escola&&!state.registry.escola)state.registry.escola=pkg.escola;
+      regUI.sel=regUI.sel||(state.registry.turmas[0]||{}).cid;save();renderReg();toast(n+' turma(s) aberta(s) do pacote');
+    }
+  }catch(e){toast(mode==='names'?'Não consegui ler a planilha (use .xlsx ou .csv com uma coluna Nome)':'Arquivo inválido. Use um pacote .json exportado pelo EduQuest')}
+});
+$('#cCodes').onclick=async()=>{
+  const R=state.registry;const rows=[];
+  R.turmas.slice().sort((a,b)=>(a.unit||'').localeCompare(b.unit||'','pt-BR')||a.name.localeCompare(b.name,'pt-BR',{numeric:true})).forEach(t=>t.students.slice().sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')).forEach(s=>rows.push([t.unit||'',t.name,t.serie||'',s.name,s.code])));
+  if(!rows.length){toast('Nenhum aluno cadastrado');return}
+  const head=['Unidade','Turma','Série','Aluno','Código'];
+  if(typeof XLSX!=='undefined'){
+    const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([head,...rows]);ws['!cols']=[{wch:14},{wch:14},{wch:10},{wch:30},{wch:10}];
+    XLSX.utils.book_append_sheet(wb,ws,'Códigos');
+    await saveFile(`codigos-alunos-${todayStr()}.xlsx`,new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  }else{
+    const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+    await saveFile(`codigos-alunos-${todayStr()}.csv`,new Blob(['\ufeff'+[head,...rows].map(r=>r.map(q).join(';')).join('\r\n')],{type:'text/csv'}));
+  }
+};
+// professor: importar turmas da coordenação
+$('#bImpT').onclick=()=>{$('#impFile').value='';$('#impText').value='';$('#impRemove').checked=false;$('#dImpT').showModal()};
+$('#impGo').onclick=async()=>{
+  try{
+    let txt=$('#impText').value.trim();
+    const f=$('#impFile').files&&$('#impFile').files[0];
+    if(f)txt=await f.text();
+    if(!txt){toast('Escolha o arquivo ou cole o conteúdo do pacote');return}
+    const r=importPackage(JSON.parse(txt),{removeMissing:$('#impRemove').checked});
+    $('#dImpT').close();toast('Importado: '+sumTxt(r));
+  }catch(e){toast('Pacote inválido. Use o arquivo .json exportado pela coordenação')}
 };
 
 /* ========= início ========= */
@@ -1242,6 +1519,7 @@ $('#bNomes').setAttribute('aria-pressed',state.showNames);
 $('#bFotos').setAttribute('aria-pressed',!!state.showPhotos);
 $('#bSom').setAttribute('aria-pressed',state.sound);$('#bSom').textContent=state.sound?'🔊 Som':'🔇 Som';
 syncBoard();renderAll();
+setRole(state.role||'professor');
 try{document.fonts.load('700 10px "Pixelify Sans"').then(buildRoom)}catch(e){}
 requestAnimationFrame(frame);
 })();
